@@ -1,14 +1,14 @@
-"If you enjoy using %@, would you mind taking a moment to rate it? It won't take more than a minute. Thanks for your support!" = "Если Вам понравилась программа %@, пожалуйста поставьте свою оценку. Это займет у Вас не более одной минуты.\n Спасибо за поддержку!";
+"If you enjoy using %@, would you mind taking a moment to rate it? It won't take more than a minute. Thanks for your support!" = "Если Вам понравилась %@, пожалуйста поставьте оценку. Это займет не более одной минуты.\n Спасибо за поддержку!";
 "Rate %@" = "Оценить %@";
 "No, Thanks" = "Нет, спасибо";
 "Remind me later" = "Напомнить позже";
 
-"%@ Feedback" = "%@ Feedback";
-"How do you feel about %@?" = "How do you feel about %@?";
-"Something's not quite right" = "Something's not quite right";
-"I love it!" = "I love it!";
-"I have feedback" = "I have feedback";
+"%@ Feedback" = "%@ Обратная связь";
+"How do you feel about %@?" = "Как вам %@?";
+"Something's not quite right" = "Кое-что не нравится";
+"I love it!" = "Обожаю!";
+"I have feedback" = "У меня предложение";
 
-"Having issues with %@" = "Having issues with %@";
-"Please describe your issue:\n" = "Please describe your issue:\n";
-"Your device doesn't support sending email please email %@" = "Your device doesn't support sending email please email %@";
+"Having issues with %@" = "Проблемы с %@";
+"Please describe your issue:\n" = "Опишите проблему:\n";
+"Your device doesn't support sending email please email %@" = "Ваше устройство не поддерживает отправку email, пожалуйста, напишите на %@";
