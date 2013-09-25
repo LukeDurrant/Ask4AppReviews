@@ -46,8 +46,6 @@ NSString *const kAsk4AppReviewsReminderRequestDate		= @"kAsk4AppReviewsReminderR
 NSString *const kAsk4AppReviewsAppIdBundleKey            = @"AppStoreId";
 NSString *const kAsk4AppReviewsEmailBundleKey            = @"DeveloperEmail";
 
-NSString *templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZStore.woa/wa/viewContentsUserReviews?type=Purple+Software&id=APP_ID";
-
 @interface Ask4AppReviews ()
 - (BOOL)connectedToNetwork;
 + (NSString*)appStoreAppID;
@@ -60,7 +58,9 @@ NSString *templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZSto
 - (void)hideRatingAlert;
 @end
 
-@implementation Ask4AppReviews 
+@implementation Ask4AppReviews {
+    NSString *templateReviewURL;
+}
 
 @synthesize questionAlert;
 @synthesize ratingAlert;
@@ -131,6 +131,20 @@ NSString *templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZSto
 	}
 	
 	return ask;
+}
+
+- (id)init
+{
+    self = [super init];
+    if (self) {
+        if ([[[UIDevice currentDevice] systemVersion] compare:@"7.0" options:NSNumericSearch] == NSOrderedAscending) {
+            templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZStore.woa/wa/viewContentsUserReviews?type=Purple+Software&id=APP_ID";
+        } else {
+            templateReviewURL = @"itms-apps://itunes.apple.com/app/idAPP_ID";
+        }
+    }
+
+    return self;
 }
 
 - (void)showRatingAlert {
@@ -407,7 +421,7 @@ NSString *templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZSto
 	NSLog(@"Ask4AppReviews NOTE: iTunes App Store is not supported on the iOS simulator. Unable to open App Store page.");
 #else
 	NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
-    NSString *reviewURL = [templateReviewURL stringByReplacingOccurrencesOfString:@"APP_ID" withString:[NSString stringWithFormat:@"%d", [self appStoreAppID]]];
+    NSString *reviewURL = [[Ask4AppReviews sharedInstance]->templateReviewURL stringByReplacingOccurrencesOfString:@"APP_ID" withString:[self appStoreAppID]];
 
 	[userDefaults setBool:YES forKey:kAsk4AppReviewsRatedCurrentVersion];
 	[userDefaults synchronize];
