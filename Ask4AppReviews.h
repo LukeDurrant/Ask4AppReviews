@@ -92,7 +92,7 @@ extern NSString *const kAsk4AppReviewsReminderRequestDate;
 #define Ask4AppReviews_LOCALIZED_EMAIL_SUBJECT NSLocalizedString(@"Having issues with %@", nil)
 #define Ask4AppReviews_EMAIL_SUBJECT			[NSString stringWithFormat:Ask4AppReviews_LOCALIZED_EMAIL_SUBJECT, Ask4AppReviews_APP_NAME]
 
-#define Ask4AppReviews_EMAIL_BODY NSLocalizedString(@"Please describe your issue:", nil)
+#define Ask4AppReviews_EMAIL_BODY NSLocalizedString(@"Please describe your issue:\n", nil)
 
 #define Ask4AppReviews_LOCALIZED_DEVELOPER_EMAIL_ALERT NSLocalizedString(@"Your device doesn't support sending email please email %@", nil)
 #define Ask4AppReviews_DEVELOPER_EMAIL_ALERT			[NSString stringWithFormat:Ask4AppReviews_LOCALIZED_DEVELOPER_EMAIL_ALERT, [Ask4AppReviews developerEmail]]
