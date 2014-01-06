@@ -16,7 +16,7 @@ Getting Started
 
 Customization
 -------------
-You can override the dettings #defined in .h file, by calling the method `[Ask4AppReviews loadConfiguration:@{key:value}] somewhere early in your app (for example, in the `didFinishLaunchingWithOptions:` method of your AppDelegate), for example something like this (if you change the .h file installed via CocoaPods, you'll loose your changes):
+You can override the dettings #defined in .h file, by calling the method `[Ask4AppReviews loadConfiguration:@{key:value}]` somewhere early in your app (for example, in the `didFinishLaunchingWithOptions:` method of your AppDelegate), for example something like this (if you change the .h file installed via CocoaPods, you'll loose your changes):
 
     [Ask4AppReviews loadConfiguration:@{
                                         @"Ask4AppReviews_DAYS_UNTIL_PROMPT" : @3,
