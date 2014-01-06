@@ -248,4 +248,10 @@ extern NSString *const kAsk4AppReviewsReminderRequestDate;
  */
 + (void)rateApp;
 
+/*
+ Loads external configuration options
+ 
+ */
++ (void) loadConfiguration:(NSDictionary *) configurationDict;
+
 @end

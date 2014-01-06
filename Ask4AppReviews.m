@@ -34,8 +34,6 @@
 #import <SystemConfiguration/SCNetworkReachability.h>
 #include <netinet/in.h>
 
-
-
 NSString *const kAsk4AppReviewsFirstUseDate				= @"kAsk4AppReviewsFirstUseDate";
 NSString *const kAsk4AppReviewsUseCount					= @"kAsk4AppReviewsUseCount";
 NSString *const kAsk4AppReviewsSignificantEventCount		= @"kAsk4AppReviewsSignificantEventCount";
@@ -45,6 +43,9 @@ NSString *const kAsk4AppReviewsDeclinedToRate			= @"kAsk4AppReviewsDeclinedToRat
 NSString *const kAsk4AppReviewsReminderRequestDate		= @"kAsk4AppReviewsReminderRequestDate";
 NSString *const kAsk4AppReviewsAppIdBundleKey            = @"AppStoreId";
 NSString *const kAsk4AppReviewsEmailBundleKey            = @"DeveloperEmail";
+
+
+static NSDictionary *config;
 
 NSString *templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZStore.woa/wa/viewContentsUserReviews?type=Purple+Software&id=APP_ID";
 NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
@@ -61,11 +62,52 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
 - (void)hideRatingAlert;
 @end
 
-@implementation Ask4AppReviews 
+@implementation Ask4AppReviews
 
 @synthesize questionAlert;
 @synthesize ratingAlert;
 @synthesize theViewController;
+
+double days_until_prompt ()
+{
+    if ([config valueForKey:@"Ask4AppReviews_DAYS_UNTIL_PROMPT"] != nil) {
+        return [[config valueForKey:@"Ask4AppReviews_DAYS_UNTIL_PROMPT"] doubleValue];
+    } else {
+        return Ask4AppReviews_DAYS_UNTIL_PROMPT;
+    }
+}
+int uses_until_prompt ()
+{
+    if ([config valueForKey:@"Ask4AppReviews_USES_UNTIL_PROMPT"] != nil) {
+        return [[config valueForKey:@"Ask4AppReviews_USES_UNTIL_PROMPT"] intValue];
+    } else {
+        return Ask4AppReviews_USES_UNTIL_PROMPT;
+    }
+}
+int sig_events_until_prompt ()
+{
+    if ([config valueForKey:@"Ask4AppReviews_SIG_EVENTS_UNTIL_PROMPT"] != nil) {
+        return [[config valueForKey:@"Ask4AppReviews_SIG_EVENTS_UNTIL_PROMPT"] intValue];
+    } else {
+        return Ask4AppReviews_SIG_EVENTS_UNTIL_PROMPT;
+    }
+}
+int time_before_reminding ()
+{
+    if ([config valueForKey:@"Ask4AppReviews_TIME_BEFORE_REMINDING"] != nil) {
+        return [[config valueForKey:@"Ask4AppReviews_TIME_BEFORE_REMINDING"] doubleValue];
+    } else {
+        return Ask4AppReviews_TIME_BEFORE_REMINDING;
+    }
+}
+bool debug ()
+{
+    if ([config valueForKey:@"Ask4AppReviews_DEBUG"] != nil) {
+        return [[config valueForKey:@"Ask4AppReviews_DEBUG"] boolValue];
+    } else {
+        return Ask4AppReviews_DEBUG;
+    }
+}
 
 - (BOOL)connectedToNetwork {
     // Create zero addy
@@ -80,7 +122,7 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
 	
     BOOL didRetrieveFlags = SCNetworkReachabilityGetFlags(defaultRouteReachability, &flags);
     CFRelease(defaultRouteReachability);
-
+    
     if (!didRetrieveFlags)
     {
         NSLog(@"Error. Could not recover network reachability flags");
@@ -100,11 +142,11 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
 
 +(NSString*)appStoreAppID {
 	
-   NSString* value = [[[NSBundle mainBundle] infoDictionary] objectForKey:kAsk4AppReviewsAppIdBundleKey];
+    NSString* value = [[[NSBundle mainBundle] infoDictionary] objectForKey:kAsk4AppReviewsAppIdBundleKey];
 	
-   NSAssert1(value, @"Error - you have not specified %@ property in your info.plist", kAsk4AppReviewsAppIdBundleKey);
+    NSAssert1(value, @"Error - you have not specified %@ property in your info.plist", kAsk4AppReviewsAppIdBundleKey);
 	
-   return value;
+    return value;
 }
 
 +(NSString*)developerEmail {
@@ -127,7 +169,7 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
         dispatch_once(&onceToken, ^{
             ask = [[Ask4AppReviews alloc] init];
             [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appWillResignActive) name:
-                UIApplicationWillResignActiveNotification object:nil];
+             UIApplicationWillResignActiveNotification object:nil];
         });
 	}
 	
@@ -137,23 +179,23 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
 - (void)showRatingAlert {
     
 	UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:Ask4AppReviews_MESSAGE_TITLE
-														 message:Ask4AppReviews_MESSAGE
-														delegate:self
-											   cancelButtonTitle:Ask4AppReviews_CANCEL_BUTTON
-											   otherButtonTitles:Ask4AppReviews_RATE_BUTTON, Ask4AppReviews_RATE_LATER, nil];
+                                                        message:Ask4AppReviews_MESSAGE
+                                                       delegate:self
+                                              cancelButtonTitle:Ask4AppReviews_CANCEL_BUTTON
+                                              otherButtonTitles:Ask4AppReviews_RATE_BUTTON, Ask4AppReviews_RATE_LATER, nil];
     alertView.tag = 2;
 	self.ratingAlert = alertView;
 	[alertView show];
     
 }
 
-- (void)showQuestionAlert 
-{      
+- (void)showQuestionAlert
+{
     UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:Ask4AppReviews_QUESTION_MESSAGE_TITLE
-														 message:Ask4AppReviews_QUESTION
-														delegate:self
-											   cancelButtonTitle:Ask4AppReviews_RATE_LATER
-											   otherButtonTitles:Ask4AppReviews_NO, Ask4AppReviews_YES, nil];
+                                                        message:Ask4AppReviews_QUESTION
+                                                       delegate:self
+                                              cancelButtonTitle:Ask4AppReviews_RATE_LATER
+                                              otherButtonTitles:Ask4AppReviews_NO, Ask4AppReviews_YES, nil];
     alertView.tag = 1;
 	self.questionAlert = alertView;
 	[alertView show];
@@ -161,25 +203,25 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
 }
 
 - (BOOL)ratingConditionsHaveBeenMet {
-	if (Ask4AppReviews_DEBUG)
+	if (debug())
 		return YES;
 	
 	NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
 	
 	NSDate *dateOfFirstLaunch = [NSDate dateWithTimeIntervalSince1970:[userDefaults doubleForKey:kAsk4AppReviewsFirstUseDate]];
 	NSTimeInterval timeSinceFirstLaunch = [[NSDate date] timeIntervalSinceDate:dateOfFirstLaunch];
-	NSTimeInterval timeUntilRate = 60 * 60 * 24 * Ask4AppReviews_DAYS_UNTIL_PROMPT;
+	NSTimeInterval timeUntilRate = 60 * 60 * 24 * days_until_prompt();
 	if (timeSinceFirstLaunch < timeUntilRate)
 		return NO;
 	
 	// check if the app has been used enough
-	int useCount = [userDefaults integerForKey:kAsk4AppReviewsUseCount];
-	if (useCount <= Ask4AppReviews_USES_UNTIL_PROMPT)
+	NSInteger useCount = [userDefaults integerForKey:kAsk4AppReviewsUseCount];
+	if (useCount <= uses_until_prompt())
 		return NO;
 	
 	// check if the user has done enough significant events
-	int sigEventCount = [userDefaults integerForKey:kAsk4AppReviewsSignificantEventCount];
-	if (sigEventCount <= Ask4AppReviews_SIG_EVENTS_UNTIL_PROMPT)
+	NSInteger sigEventCount = [userDefaults integerForKey:kAsk4AppReviewsSignificantEventCount];
+	if (sigEventCount <= sig_events_until_prompt())
 		return NO;
 	
 	// has the user previously declined to rate this version of the app?
@@ -193,7 +235,7 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
 	// if the user wanted to be reminded later, has enough time passed?
 	NSDate *reminderRequestDate = [NSDate dateWithTimeIntervalSince1970:[userDefaults doubleForKey:kAsk4AppReviewsReminderRequestDate]];
 	NSTimeInterval timeSinceReminderRequest = [[NSDate date] timeIntervalSinceDate:reminderRequestDate];
-	NSTimeInterval timeUntilReminder = 60 * 60 * 24 * Ask4AppReviews_TIME_BEFORE_REMINDING;
+	NSTimeInterval timeUntilReminder = 60 * 60 * 24 * time_before_reminding();
 	if (timeSinceReminderRequest < timeUntilReminder)
 		return NO;
 	
@@ -214,7 +256,7 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
 		[userDefaults setObject:version forKey:kAsk4AppReviewsCurrentVersion];
 	}
 	
-	if (Ask4AppReviews_DEBUG)
+	if (debug())
 		NSLog(@"Ask4AppReviews Tracking version: %@", trackingVersion);
 	
 	if ([trackingVersion isEqualToString:version])
@@ -228,11 +270,11 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
 		}
 		
 		// increment the use count
-		int useCount = [userDefaults integerForKey:kAsk4AppReviewsUseCount];
+		NSInteger useCount = [userDefaults integerForKey:kAsk4AppReviewsUseCount];
 		useCount++;
 		[userDefaults setInteger:useCount forKey:kAsk4AppReviewsUseCount];
-		if (Ask4AppReviews_DEBUG)
-			NSLog(@"Ask4AppReviews Use count: %d", useCount);
+		if (debug())
+			NSLog(@"Ask4AppReviews Use count: %ld", (long)useCount);
 	}
 	else
 	{
@@ -263,7 +305,7 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
 		[userDefaults setObject:version forKey:kAsk4AppReviewsCurrentVersion];
 	}
 	
-	if (Ask4AppReviews_DEBUG)
+	if (debug())
 		NSLog(@"Ask4AppReviews Tracking version: %@", trackingVersion);
 	
 	if ([trackingVersion isEqualToString:version])
@@ -277,11 +319,11 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
 		}
 		
 		// increment the significant event count
-		int sigEventCount = [userDefaults integerForKey:kAsk4AppReviewsSignificantEventCount];
+		NSInteger sigEventCount = [userDefaults integerForKey:kAsk4AppReviewsSignificantEventCount];
 		sigEventCount++;
 		[userDefaults setInteger:sigEventCount forKey:kAsk4AppReviewsSignificantEventCount];
-		if (Ask4AppReviews_DEBUG)
-			NSLog(@"Ask4AppReviews Significant event count: %d", sigEventCount);
+		if (debug())
+			NSLog(@"Ask4AppReviews Significant event count: %ld", (long)sigEventCount);
 	}
 	else
 	{
@@ -308,11 +350,11 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
         dispatch_async(dispatch_get_main_queue(),
                        ^{
                            //If they have been asked before and said remind me take them straight to the rating alert
-
+                           
                            NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
                            double kAsk4AppReviewsReminder = [userDefaults doubleForKey:kAsk4AppReviewsReminderRequestDate];
                            
-                           if(kAsk4AppReviewsReminder == 0 || Ask4AppReviews_DEBUG)
+                           if(kAsk4AppReviewsReminder == 0 || debug())
                            {
                                [self showQuestionAlert];
                            }else{
@@ -334,7 +376,7 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
                            NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
                            double kAsk4AppReviewsReminder = [userDefaults doubleForKey:kAsk4AppReviewsReminderRequestDate];
                            
-                           if(kAsk4AppReviewsReminder == 0 || Ask4AppReviews_DEBUG)
+                           if(kAsk4AppReviewsReminder == 0 || debug())
                            {
                                [self showQuestionAlert];
                            }else{
@@ -368,23 +410,23 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
 
 - (void)hideRatingAlert {
 	if (self.ratingAlert.visible) {
-		if (Ask4AppReviews_DEBUG)
+		if (debug())
 			NSLog(@"Ask4AppReviews Hiding Alert");
         
 		[self.ratingAlert dismissWithClickedButtonIndex:-1 animated:NO];
         
-	}	
+	}
     if (self.questionAlert.visible) {
-		if (Ask4AppReviews_DEBUG)
+		if (debug())
 			NSLog(@"Ask4AppReviews questionAlert Alert");
         
 		[self.questionAlert dismissWithClickedButtonIndex:-1 animated:NO];
         
-	}	
+	}
 }
 
 + (void)appWillResignActive {
-	if (Ask4AppReviews_DEBUG)
+	if (debug())
 		NSLog(@"Ask4AppReviews appWillResignActive");
 	[[Ask4AppReviews sharedInstance] hideRatingAlert];
 }
@@ -412,7 +454,7 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
     if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 7.0) {
         reviewURL = [templateReviewURLiOS7 stringByReplacingOccurrencesOfString:@"APP_ID" withString:[NSString stringWithFormat:@"%@", [self appStoreAppID]]];
     }
-
+    
 	[userDefaults setBool:YES forKey:kAsk4AppReviewsRatedCurrentVersion];
 	[userDefaults synchronize];
 	[[UIApplication sharedApplication] openURL:[NSURL URLWithString:reviewURL]];
@@ -420,7 +462,7 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
 }
 
 - (void)mailComposeController:(MFMailComposeViewController*)controller didFinishWithResult:(MFMailComposeResult)result error:(NSError*)error {
-    [theViewController dismissModalViewControllerAnimated:YES];
+    [theViewController dismissViewControllerAnimated:YES completion:nil];
 }
 
 - (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
@@ -451,23 +493,23 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
                 //You need to include UIMessage Framework
                 if ([MFMailComposeViewController canSendMail])
                 {
-                MFMailComposeViewController *mPicker = [[MFMailComposeViewController alloc] init];
-                mPicker.mailComposeDelegate = self;
-                
-                [mPicker setSubject:Ask4AppReviews_EMAIL_SUBJECT];
-                
-                NSArray *toRecipients = [NSArray arrayWithObject:[Ask4AppReviews developerEmail]]; 
-                
-                [mPicker setToRecipients:toRecipients];
-                [mPicker setMessageBody:Ask4AppReviews_EMAIL_BODY isHTML:NO];
-                
-                [theViewController presentModalViewController:mPicker animated:YES];
-
+                    MFMailComposeViewController *mPicker = [[MFMailComposeViewController alloc] init];
+                    mPicker.mailComposeDelegate = self;
+                    
+                    [mPicker setSubject:Ask4AppReviews_EMAIL_SUBJECT];
+                    
+                    NSArray *toRecipients = [NSArray arrayWithObject:[Ask4AppReviews developerEmail]];
+                    
+                    [mPicker setToRecipients:toRecipients];
+                    [mPicker setMessageBody:Ask4AppReviews_EMAIL_BODY isHTML:NO];
+                    
+                    [theViewController presentViewController:mPicker animated:YES completion:nil];
+                    
                 }else {
-                    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Failure" 
+                    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Failure"
                                                                     message:Ask4AppReviews_DEVELOPER_EMAIL_ALERT
-                                                                   delegate:nil 
-                                                          cancelButtonTitle:@"OK" 
+                                                                   delegate:nil
+                                                          cancelButtonTitle:@"OK"
                                                           otherButtonTitles: nil];
                     [alert show];
                 }
@@ -476,7 +518,7 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
                 [userDefaults synchronize];
                 
                 
-                                
+                
                 break;
             default:
                 break;
@@ -513,9 +555,14 @@ NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
                 break;
         }
         
-
+        
     }
     
+}
+
++ (void) loadConfiguration:(NSDictionary *) configurationDict
+{
+    config = configurationDict;
 }
 
 @end
