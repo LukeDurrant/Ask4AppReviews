@@ -9,7 +9,7 @@ Ask4AppReviews is a class that you can drop into any iPhone app (iOS 5.0 or late
   s.screenshots  = "http://lukedurrant.com/wp-content/uploads/2012/06/hackbookfeedback.jpg"
   s.license      = 'MIT/X11'
   s.author       = { "Luke Durrant" => "http://lukedurrant.com/contact/" }
-  s.source       = { :git => "https://github.com/LukeDurrant/Ask4AppReviews.git", :tag => s.version.to_s}
+  s.source       = { :git => "https://github.com/jgregmccormick/Ask4AppReviews.git", :tag => s.version.to_s}
 
   s.platform     = :ios, '5.0'
   # s.ios.deployment_target = '5.0'
