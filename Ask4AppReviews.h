@@ -179,6 +179,7 @@ extern NSString *const kAsk4AppReviewsReminderRequestDate;
 
 @property(nonatomic, strong) UIViewController *theViewController;
 
+
 /*
  DEPRECATED: While still functional, it's better to use
  appLaunched:(BOOL)canPromptForRating instead.
@@ -252,5 +253,11 @@ extern NSString *const kAsk4AppReviewsReminderRequestDate;
  whether to rate the app.
  */
 + (void)rateApp;
+
+/*
+  + Loads external configuration options
+  +
+  + */
++ (void) loadConfiguration:(NSDictionary *) configurationDict;
 
 @end

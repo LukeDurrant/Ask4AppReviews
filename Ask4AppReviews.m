@@ -35,8 +35,6 @@
 #include <netinet/in.h>
 
 
-
-
 NSString *const kAsk4AppReviewsFirstUseDate				= @"kAsk4AppReviewsFirstUseDate";
 NSString *const kAsk4AppReviewsUseCount					= @"kAsk4AppReviewsUseCount";
 NSString *const kAsk4AppReviewsSignificantEventCount	= @"kAsk4AppReviewsSignificantEventCount";
@@ -46,6 +44,8 @@ NSString *const kAsk4AppReviewsDeclinedToRate			= @"kAsk4AppReviewsDeclinedToRat
 NSString *const kAsk4AppReviewsReminderRequestDate		= @"kAsk4AppReviewsReminderRequestDate";
 NSString *const kAsk4AppReviewsAppIdBundleKey           = @"AppStoreId";
 NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
+
+static NSDictionary *config;
 
 @interface Ask4AppReviews ()
 - (BOOL)connectedToNetwork;
@@ -67,6 +67,47 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 @synthesize questionAlert;
 @synthesize ratingAlert;
 @synthesize theViewController;
+
+double days_until_prompt ()
+{
+    if ([config valueForKey:@"Ask4AppReviews_DAYS_UNTIL_PROMPT"] != nil) {
+        return [[config valueForKey:@"Ask4AppReviews_DAYS_UNTIL_PROMPT"] doubleValue];
+    } else {
+        return Ask4AppReviews_DAYS_UNTIL_PROMPT;
+    }
+}
+int uses_until_prompt ()
+{
+    if ([config valueForKey:@"Ask4AppReviews_USES_UNTIL_PROMPT"] != nil) {
+        return [[config valueForKey:@"Ask4AppReviews_USES_UNTIL_PROMPT"] intValue];
+    } else {
+        return Ask4AppReviews_USES_UNTIL_PROMPT;
+    }
+}
+int sig_events_until_prompt ()
+{
+    if ([config valueForKey:@"Ask4AppReviews_SIG_EVENTS_UNTIL_PROMPT"] != nil) {
+        return [[config valueForKey:@"Ask4AppReviews_SIG_EVENTS_UNTIL_PROMPT"] intValue];
+    } else {
+        return Ask4AppReviews_SIG_EVENTS_UNTIL_PROMPT;
+    }
+}
+int time_before_reminding ()
+{
+    if ([config valueForKey:@"Ask4AppReviews_TIME_BEFORE_REMINDING"] != nil) {
+        return [[config valueForKey:@"Ask4AppReviews_TIME_BEFORE_REMINDING"] doubleValue];
+    } else {
+        return Ask4AppReviews_TIME_BEFORE_REMINDING;
+    }
+}
+bool debug ()
+{
+    if ([config valueForKey:@"Ask4AppReviews_DEBUG"] != nil) {
+        return [[config valueForKey:@"Ask4AppReviews_DEBUG"] boolValue];
+    } else {
+        return Ask4AppReviews_DEBUG;
+    }
+}
 
 - (BOOL)connectedToNetwork {
     // Create zero addy
@@ -187,18 +228,18 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 	
 	NSDate *dateOfFirstLaunch = [NSDate dateWithTimeIntervalSince1970:[userDefaults doubleForKey:kAsk4AppReviewsFirstUseDate]];
 	NSTimeInterval timeSinceFirstLaunch = [[NSDate date] timeIntervalSinceDate:dateOfFirstLaunch];
-	NSTimeInterval timeUntilRate = 60 * 60 * 24 * Ask4AppReviews_DAYS_UNTIL_PROMPT;
+	NSTimeInterval timeUntilRate = 60 * 60 * 24 * days_until_prompt();
 	if (timeSinceFirstLaunch < timeUntilRate)
 		return NO;
 	
 	// check if the app has been used enough
 	int useCount = [userDefaults integerForKey:kAsk4AppReviewsUseCount];
-	if (useCount <= Ask4AppReviews_USES_UNTIL_PROMPT)
+	if (useCount <= uses_until_prompt())
 		return NO;
 	
 	// check if the user has done enough significant events
 	int sigEventCount = [userDefaults integerForKey:kAsk4AppReviewsSignificantEventCount];
-	if (sigEventCount <= Ask4AppReviews_SIG_EVENTS_UNTIL_PROMPT)
+	if (sigEventCount <= sig_events_until_prompt())
 		return NO;
 	
 	// has the user previously declined to rate this version of the app?
@@ -212,7 +253,7 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 	// if the user wanted to be reminded later, has enough time passed?
 	NSDate *reminderRequestDate = [NSDate dateWithTimeIntervalSince1970:[userDefaults doubleForKey:kAsk4AppReviewsReminderRequestDate]];
 	NSTimeInterval timeSinceReminderRequest = [[NSDate date] timeIntervalSinceDate:reminderRequestDate];
-	NSTimeInterval timeUntilReminder = 60 * 60 * 24 * Ask4AppReviews_TIME_BEFORE_REMINDING;
+	NSTimeInterval timeUntilReminder = 60 * 60 * 24 * time_before_reminding();
 	if (timeSinceReminderRequest < timeUntilReminder)
 		return NO;
 	
@@ -233,7 +274,7 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 		[userDefaults setObject:version forKey:kAsk4AppReviewsCurrentVersion];
 	}
 	
-	if (Ask4AppReviews_DEBUG)
+	if (debug())
 		NSLog(@"Ask4AppReviews Tracking version: %@", trackingVersion);
 	
 	if ([trackingVersion isEqualToString:version])
@@ -250,7 +291,7 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 		int useCount = [userDefaults integerForKey:kAsk4AppReviewsUseCount];
 		useCount++;
 		[userDefaults setInteger:useCount forKey:kAsk4AppReviewsUseCount];
-		if (Ask4AppReviews_DEBUG)
+		if (debug())
 			NSLog(@"Ask4AppReviews Use count: %d", useCount);
 	}
 	else
@@ -282,7 +323,7 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 		[userDefaults setObject:version forKey:kAsk4AppReviewsCurrentVersion];
 	}
 	
-	if (Ask4AppReviews_DEBUG)
+	if (debug())
 		NSLog(@"Ask4AppReviews Tracking version: %@", trackingVersion);
 	
 	if ([trackingVersion isEqualToString:version])
@@ -331,7 +372,7 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
                            NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
                            double kAsk4AppReviewsReminder = [userDefaults doubleForKey:kAsk4AppReviewsReminderRequestDate];
                            
-                           if(kAsk4AppReviewsReminder == 0 || Ask4AppReviews_DEBUG)
+                           if(kAsk4AppReviewsReminder == 0 || debug())
                            {
                                [self showQuestionAlert];
                            }else{
@@ -353,7 +394,7 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
                            NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
                            double kAsk4AppReviewsReminder = [userDefaults doubleForKey:kAsk4AppReviewsReminderRequestDate];
                            
-                           if(kAsk4AppReviewsReminder == 0 || Ask4AppReviews_DEBUG)
+                           if(kAsk4AppReviewsReminder == 0 || debug())
                            {
                                [self showQuestionAlert];
                            }else{
@@ -380,7 +421,6 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
                    });
 }
 
-
 + (void)appLaunched:(BOOL)canPromptForRating viewController:(UINavigationController*)viewController {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0),
                    ^{
@@ -393,14 +433,14 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 
 - (void)hideRatingAlert {
 	if (self.ratingAlert.visible) {
-		if (Ask4AppReviews_DEBUG)
+		if (debug())
 			NSLog(@"Ask4AppReviews Hiding Alert");
         
 		[self.ratingAlert dismissWithClickedButtonIndex:-1 animated:NO];
         
 	}
     if (self.questionAlert.visible) {
-		if (Ask4AppReviews_DEBUG)
+		if (debug())
 			NSLog(@"Ask4AppReviews questionAlert Alert");
         
 		[self.questionAlert dismissWithClickedButtonIndex:-1 animated:NO];
@@ -409,7 +449,7 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 }
 
 + (void)appWillResignActive {
-	if (Ask4AppReviews_DEBUG)
+	if (debug())
 		NSLog(@"Ask4AppReviews appWillResignActive");
 	[[Ask4AppReviews sharedInstance] hideRatingAlert];
 }
@@ -568,9 +608,6 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
     
 }
 
-// got this stuff rom appirater should ask ask4reviews to combine
-
-
 - (id)getRootViewController {
     UIWindow *window = [[UIApplication sharedApplication] keyWindow];
     if (window.windowLevel != UIWindowLevelNormal) {
@@ -608,6 +645,10 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 	return controller;
 }
 
++ (void) loadConfiguration:(NSDictionary *) configurationDict
+{
+    config = configurationDict;
+}
 
 
 @end

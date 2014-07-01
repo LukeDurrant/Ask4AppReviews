@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "Ask4AppReviews"
-  s.version      = "0.2"
+  s.version      = "0.3"
   s.summary      = "Reminds iPhone app's users to review the app, but also asks for feedback (through email) if the user is having issues" 
   s.description  = <<-DESC
 Ask4AppReviews is a class that you can drop into any iPhone app (iOS 5.0 or later) that will help remind your users to review your app on the App Store. The code is released under the MIT/X11, so feel free to modify and share your changes with the world. To find out more, check out the homepage.
@@ -17,11 +17,8 @@ Ask4AppReviews is a class that you can drop into any iPhone app (iOS 5.0 or late
   s.requires_arc = true
 
   s.source_files = 'Ask4AppReviews.m', 'Ask4AppReviews.h'
-  # s.resources = 'Assets'
+  s.resources = 'README.md', 'LICENSE'
 
-  # s.ios.exclude_files = 'Classes/osx'
-  # s.osx.exclude_files = 'Classes/ios'
-  # s.public_header_files = 'Classes/**/*.h'
   s.frameworks = 'CFNetwork', 'SystemConfiguration', 'MessageUI'
-  # s.dependency 'JSONKit', '~> 1.4'
+
 end
