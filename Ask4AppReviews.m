@@ -33,7 +33,7 @@
 #import "Ask4AppReviews.h"
 #import <SystemConfiguration/SCNetworkReachability.h>
 #include <netinet/in.h>
-#import "GAIDictionaryBuilder.h"
+
 
 
 
@@ -99,7 +99,8 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
     return ((isReachable && !needsConnection) || nonWiFi) ? (testConnection ? YES : NO) : NO;
 }
 
-+(NSString*)appStoreAppID {
++(NSString*)appStoreAppID
+{
 	
     NSString* value = [[NSBundle mainBundle] infoDictionary][kAsk4AppReviewsAppIdBundleKey];
 	
@@ -437,14 +438,7 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 	[userDefaults setBool:YES forKey:kAsk4AppReviewsRatedCurrentVersion];
 	[userDefaults synchronize];
     [[UIApplication sharedApplication] openURL:[NSURL URLWithString:reviewURL]];
-    // May return nil if a tracker has not already been initialized with a property
-    // ID.
-    id tracker = [[GAI sharedInstance] defaultTracker];
     
-    [tracker send:[[GAIDictionaryBuilder createEventWithCategory:@"ui_action"     // Event category (required)
-                                                          action:@"button_press"  // Event action (required)
-                                                           label:@"submit_reivew"          // Event label
-                                                           value:nil] build]];    // Event value
 #endif
 }
 
