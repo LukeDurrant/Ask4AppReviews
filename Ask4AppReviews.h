@@ -36,6 +36,7 @@
 
 #import <Foundation/Foundation.h>
 
+#import "Ask4AppReviewsDelegate.h"
 
 
 extern NSString *const kAsk4AppReviewsFirstUseDate;
@@ -119,65 +120,29 @@ extern NSString *const kAsk4AppReviewsReminderRequestDate;
  */
 #define Ask4AppReviews_RATE_LATER			NSLocalizedString(@"Remind me later", nil)
 
-/*
- Users will need to have the same version of your app installed for this many
- days before they will be prompted to rate it.
- */
-#define Ask4AppReviews_DAYS_UNTIL_PROMPT		1		// double
-
-/*
- An example of a 'use' would be if the user launched the app. Bringing the app
- into the foreground (on devices that support it) would also be considered
- a 'use'. You tell Ask4AppReviews about these events using the two methods:
- [Ask4AppReviews appLaunched:]
- [Ask4AppReviews appEnteredForeground:]
- 
- Users need to 'use' the same version of the app this many times before
- before they will be prompted to rate it.
- */
-#define Ask4AppReviews_USES_UNTIL_PROMPT		3		// integer
-
-/*
- A significant event can be anything you want to be in your app. In a
- telephone app, a significant event might be placing or receiving a call.
- In a game, it might be beating a level or a boss. This is just another
- layer of filtering that can be used to make sure that only the most
- loyal of your users are being prompted to rate you on the app store.
- If you leave this at a value of -1, then this won't be a criteria
- used for rating. To tell Ask4AppReviews that the user has performed
- a significant event, call the method:
- [Ask4AppReviews userDidSignificantEvent:];
- */
-#define Ask4AppReviews_SIG_EVENTS_UNTIL_PROMPT	-1	// integer
-
-/*
- Once the rating alert is presented to the user, they might select
- 'Remind me later'. This value specifies how long (in days) Ask4AppReviews
- will wait before reminding them.
- */
-#define Ask4AppReviews_TIME_BEFORE_REMINDING		5	// double
-
-/*
- 'YES' will show the Ask4AppReviews alert everytime. Useful for testing how your message
- looks and making sure the link to your app's review page works.
- */
-#define Ask4AppReviews_DEBUG				NO
 
 #import <UIKit/UIKit.h>
 #import <MessageUI/MessageUI.h>
+#import <StoreKit/StoreKit.h>
 
-
-@interface Ask4AppReviews : NSObject <UIAlertViewDelegate, MFMailComposeViewControllerDelegate> {
+@interface Ask4AppReviews : NSObject <UIAlertViewDelegate, MFMailComposeViewControllerDelegate, SKStoreProductViewControllerDelegate> {
 
 	UIAlertView		*questionAlert;
     UIAlertView		*ratingAlert;
     UIViewController *theViewController;
     
 }
+
 @property(nonatomic, strong) UIAlertView *questionAlert;
 @property(nonatomic, strong) UIAlertView *ratingAlert;
-
 @property(nonatomic, strong) UIViewController *theViewController;
+
+@property(nonatomic) BOOL openInAppStore;
+#if __has_feature(objc_arc_weak)
+@property(nonatomic, weak) NSObject <Ask4AppReviewsDelegate> *delegate;
+#else
+@property(nonatomic, unsafe_unretained) NSObject <Ask4AppReviewsDelegate> *delegate;
+#endif
 
 
 /*
@@ -207,8 +172,6 @@ extern NSString *const kAsk4AppReviewsReminderRequestDate;
  */
 + (void)appLaunched:(BOOL)canPromptForRating;
 
-+ (void)appLaunched:(BOOL)canPromptForRating viewController:(UINavigationController*)viewController;
-
 /*
  Tells Ask4AppReviews that the app was brought to the foreground on multitasking
  devices. You should call this method from the application delegate's
@@ -222,8 +185,6 @@ extern NSString *const kAsk4AppReviewsReminderRequestDate;
  (as long as you pass YES for canPromptForRating in those methods).
  */
 + (void)appEnteredForeground:(BOOL)canPromptForRating;
-
-
 
 /*
  Tells Ask4AppReviews that the user performed a significant event. A significant
@@ -254,10 +215,64 @@ extern NSString *const kAsk4AppReviewsReminderRequestDate;
  */
 + (void)rateApp;
 
-/*
-  + Loads external configuration options
-  +
-  + */
-+ (void) loadConfiguration:(NSDictionary *) configurationDict;
+/*!
+ Users will need to have the same version of your app installed for this many
+ days before they will be prompted to rate it.
+ */
++ (void) setDaysUntilPrompt:(double)value;
+
+/*!
+ An example of a 'use' would be if the user launched the app. Bringing the app
+ into the foreground (on devices that support it) would also be considered
+ a 'use'. You tell Appirater about these events using the two methods:
+ [Appirater appLaunched:]
+ [Appirater appEnteredForeground:]
+ 
+ Users need to 'use' the same version of the app this many times before
+ before they will be prompted to rate it.
+ */
++ (void) setUsesUntilPrompt:(NSInteger)value;
+
+/*!
+ A significant event can be anything you want to be in your app. In a
+ telephone app, a significant event might be placing or receiving a call.
+ In a game, it might be beating a level or a boss. This is just another
+ layer of filtering that can be used to make sure that only the most
+ loyal of your users are being prompted to rate you on the app store.
+ If you leave this at a value of -1, then this won't be a criterion
+ used for rating. To tell Appirater that the user has performed
+ a significant event, call the method:
+ [Appirater userDidSignificantEvent:];
+ */
++ (void) setSignificantEventsUntilPrompt:(NSInteger)value;
+
+
+/*!
+ Once the rating alert is presented to the user, they might select
+ 'Remind me later'. This value specifies how long (in days) Appirater
+ will wait before reminding them.
+ */
++ (void) setTimeBeforeReminding:(double)value;
+
+/*!
+ 'YES' will show the Appirater alert everytime. Useful for testing how your message
+ looks and making sure the link to your app's review page works.
+ */
++ (void) setDebug:(BOOL)debug;
+
+/*!
+ Set the delegate if you want to know when Appirater does something
+ */
++ (void)setDelegate:(id<Ask4AppReviewsDelegate>)delegate;
+
+/*!
+ Set whether or not Appirater uses animation (currently respected when pushing modal StoreKit rating VCs).
+ */
++ (void)setUsesAnimation:(BOOL)animation;
+
+/*!
+ If set to YES, Appirater will open App Store link (instead of SKStoreProductViewController on iOS 6). Default NO.
+ */
++ (void)setOpenInAppStore:(BOOL)openInAppStore;
 
 @end

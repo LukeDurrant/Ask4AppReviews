@@ -34,6 +34,10 @@
 #import <SystemConfiguration/SCNetworkReachability.h>
 #include <netinet/in.h>
 
+#if ! __has_feature(objc_arc)
+#warning This file must be compiled with ARC. Use -fobjc-arc flag (or convert project to ARC).
+#endif
+
 
 NSString *const kAsk4AppReviewsFirstUseDate				= @"kAsk4AppReviewsFirstUseDate";
 NSString *const kAsk4AppReviewsUseCount					= @"kAsk4AppReviewsUseCount";
@@ -45,7 +49,22 @@ NSString *const kAsk4AppReviewsReminderRequestDate		= @"kAsk4AppReviewsReminderR
 NSString *const kAsk4AppReviewsAppIdBundleKey           = @"AppStoreId";
 NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 
-static NSDictionary *config;
+static double _daysUntilPrompt = 30;
+static NSInteger _usesUntilPrompt = 20;
+static NSInteger _significantEventsUntilPrompt = -1;
+static double _timeBeforeReminding = 1;
+static BOOL _debug = NO;
+#if __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_5_0
+static id<Ask4AppReviewsDelegate> _delegate;
+#else
+__weak static id<Ask4AppReviewsDelegate> _delegate;
+#endif
+static BOOL _usesAnimation = TRUE;
+static UIStatusBarStyle _statusBarStyle;
+static BOOL _modalOpen = false;
+
+NSString *templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZStore.woa/wa/viewContentsUserReviews?type=Purple+Software&id=APP_ID";
+NSString *templateReviewURLiOS7 = @"itms-apps://itunes.apple.com/app/idAPP_ID";
 
 @interface Ask4AppReviews ()
 - (BOOL)connectedToNetwork;
@@ -61,53 +80,49 @@ static NSDictionary *config;
 @end
 
 @implementation Ask4AppReviews {
-    NSString *templateReviewURL;
 }
 
 @synthesize questionAlert;
 @synthesize ratingAlert;
 @synthesize theViewController;
 
-double days_until_prompt ()
-{
-    if ([config valueForKey:@"Ask4AppReviews_DAYS_UNTIL_PROMPT"] != nil) {
-        return [[config valueForKey:@"Ask4AppReviews_DAYS_UNTIL_PROMPT"] doubleValue];
-    } else {
-        return Ask4AppReviews_DAYS_UNTIL_PROMPT;
-    }
+
+
++ (void) setDaysUntilPrompt:(double)value {
+    _daysUntilPrompt = value;
 }
-int uses_until_prompt ()
-{
-    if ([config valueForKey:@"Ask4AppReviews_USES_UNTIL_PROMPT"] != nil) {
-        return [[config valueForKey:@"Ask4AppReviews_USES_UNTIL_PROMPT"] intValue];
-    } else {
-        return Ask4AppReviews_USES_UNTIL_PROMPT;
-    }
+
++ (void) setUsesUntilPrompt:(NSInteger)value {
+    _usesUntilPrompt = value;
 }
-int sig_events_until_prompt ()
-{
-    if ([config valueForKey:@"Ask4AppReviews_SIG_EVENTS_UNTIL_PROMPT"] != nil) {
-        return [[config valueForKey:@"Ask4AppReviews_SIG_EVENTS_UNTIL_PROMPT"] intValue];
-    } else {
-        return Ask4AppReviews_SIG_EVENTS_UNTIL_PROMPT;
-    }
+
++ (void) setSignificantEventsUntilPrompt:(NSInteger)value {
+    _significantEventsUntilPrompt = value;
 }
-int time_before_reminding ()
-{
-    if ([config valueForKey:@"Ask4AppReviews_TIME_BEFORE_REMINDING"] != nil) {
-        return [[config valueForKey:@"Ask4AppReviews_TIME_BEFORE_REMINDING"] doubleValue];
-    } else {
-        return Ask4AppReviews_TIME_BEFORE_REMINDING;
-    }
+
++ (void) setTimeBeforeReminding:(double)value {
+    _timeBeforeReminding = value;
 }
-bool debug ()
-{
-    if ([config valueForKey:@"Ask4AppReviews_DEBUG"] != nil) {
-        return [[config valueForKey:@"Ask4AppReviews_DEBUG"] boolValue];
-    } else {
-        return Ask4AppReviews_DEBUG;
-    }
+
++ (void) setDebug:(BOOL)debug {
+    _debug = debug;
 }
++ (void)setDelegate:(id<Ask4AppReviewsDelegate>)delegate{
+	_delegate = delegate;
+}
++ (void)setUsesAnimation:(BOOL)animation {
+	_usesAnimation = animation;
+}
++ (void)setOpenInAppStore:(BOOL)openInAppStore {
+    [Ask4AppReviews sharedInstance].openInAppStore = openInAppStore;
+}
++ (void)setStatusBarStyle:(UIStatusBarStyle)style {
+	_statusBarStyle = style;
+}
++ (void)setModalOpen:(BOOL)open {
+	_modalOpen = open;
+}
+
 
 - (BOOL)connectedToNetwork {
     // Create zero addy
@@ -181,11 +196,13 @@ bool debug ()
 {
     self = [super init];
     if (self) {
-        if ([[[UIDevice currentDevice] systemVersion] compare:@"7.0" options:NSNumericSearch] == NSOrderedAscending) {
-            templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZStore.woa/wa/viewContentsUserReviews?type=Purple+Software&id=APP_ID";
+        if ([[UIDevice currentDevice].systemVersion floatValue] >= 7.0) {
+            self.openInAppStore = YES;
         } else {
-            templateReviewURL = @"itms-apps://itunes.apple.com/app/idAPP_ID";
+            self.openInAppStore = NO;
         }
+        
+        
     }
     
     return self;
@@ -221,25 +238,25 @@ bool debug ()
 
 
 - (BOOL)ratingConditionsHaveBeenMet {
-	if (Ask4AppReviews_DEBUG)
+	if (_debug)
 		return YES;
 	
 	NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
 	
 	NSDate *dateOfFirstLaunch = [NSDate dateWithTimeIntervalSince1970:[userDefaults doubleForKey:kAsk4AppReviewsFirstUseDate]];
 	NSTimeInterval timeSinceFirstLaunch = [[NSDate date] timeIntervalSinceDate:dateOfFirstLaunch];
-	NSTimeInterval timeUntilRate = 60 * 60 * 24 * days_until_prompt();
+	NSTimeInterval timeUntilRate = 60 * 60 * 24 * _daysUntilPrompt;
 	if (timeSinceFirstLaunch < timeUntilRate)
 		return NO;
 	
 	// check if the app has been used enough
 	int useCount = [userDefaults integerForKey:kAsk4AppReviewsUseCount];
-	if (useCount <= uses_until_prompt())
+	if (useCount <= _usesUntilPrompt)
 		return NO;
 	
 	// check if the user has done enough significant events
 	int sigEventCount = [userDefaults integerForKey:kAsk4AppReviewsSignificantEventCount];
-	if (sigEventCount <= sig_events_until_prompt())
+	if (sigEventCount <= _significantEventsUntilPrompt)
 		return NO;
 	
 	// has the user previously declined to rate this version of the app?
@@ -253,7 +270,7 @@ bool debug ()
 	// if the user wanted to be reminded later, has enough time passed?
 	NSDate *reminderRequestDate = [NSDate dateWithTimeIntervalSince1970:[userDefaults doubleForKey:kAsk4AppReviewsReminderRequestDate]];
 	NSTimeInterval timeSinceReminderRequest = [[NSDate date] timeIntervalSinceDate:reminderRequestDate];
-	NSTimeInterval timeUntilReminder = 60 * 60 * 24 * time_before_reminding();
+	NSTimeInterval timeUntilReminder = 60 * 60 * 24 * _timeBeforeReminding;
 	if (timeSinceReminderRequest < timeUntilReminder)
 		return NO;
 	
@@ -274,7 +291,7 @@ bool debug ()
 		[userDefaults setObject:version forKey:kAsk4AppReviewsCurrentVersion];
 	}
 	
-	if (debug())
+	if (_debug)
 		NSLog(@"Ask4AppReviews Tracking version: %@", trackingVersion);
 	
 	if ([trackingVersion isEqualToString:version])
@@ -291,7 +308,7 @@ bool debug ()
 		int useCount = [userDefaults integerForKey:kAsk4AppReviewsUseCount];
 		useCount++;
 		[userDefaults setInteger:useCount forKey:kAsk4AppReviewsUseCount];
-		if (debug())
+		if (_debug)
 			NSLog(@"Ask4AppReviews Use count: %d", useCount);
 	}
 	else
@@ -323,7 +340,7 @@ bool debug ()
 		[userDefaults setObject:version forKey:kAsk4AppReviewsCurrentVersion];
 	}
 	
-	if (debug())
+	if (_debug)
 		NSLog(@"Ask4AppReviews Tracking version: %@", trackingVersion);
 	
 	if ([trackingVersion isEqualToString:version])
@@ -340,7 +357,7 @@ bool debug ()
 		int sigEventCount = [userDefaults integerForKey:kAsk4AppReviewsSignificantEventCount];
 		sigEventCount++;
 		[userDefaults setInteger:sigEventCount forKey:kAsk4AppReviewsSignificantEventCount];
-		if (Ask4AppReviews_DEBUG)
+		if (_debug)
 			NSLog(@"Ask4AppReviews Significant event count: %d", sigEventCount);
 	}
 	else
@@ -372,7 +389,7 @@ bool debug ()
                            NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
                            double kAsk4AppReviewsReminder = [userDefaults doubleForKey:kAsk4AppReviewsReminderRequestDate];
                            
-                           if(kAsk4AppReviewsReminder == 0 || debug())
+                           if(kAsk4AppReviewsReminder == 0 || _debug)
                            {
                                [self showQuestionAlert];
                            }else{
@@ -394,7 +411,7 @@ bool debug ()
                            NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
                            double kAsk4AppReviewsReminder = [userDefaults doubleForKey:kAsk4AppReviewsReminderRequestDate];
                            
-                           if(kAsk4AppReviewsReminder == 0 || debug())
+                           if(kAsk4AppReviewsReminder == 0 || _debug)
                            {
                                [self showQuestionAlert];
                            }else{
@@ -433,14 +450,14 @@ bool debug ()
 
 - (void)hideRatingAlert {
 	if (self.ratingAlert.visible) {
-		if (debug())
+		if (_debug)
 			NSLog(@"Ask4AppReviews Hiding Alert");
         
 		[self.ratingAlert dismissWithClickedButtonIndex:-1 animated:NO];
         
 	}
     if (self.questionAlert.visible) {
-		if (debug())
+		if (_debug)
 			NSLog(@"Ask4AppReviews questionAlert Alert");
         
 		[self.questionAlert dismissWithClickedButtonIndex:-1 animated:NO];
@@ -449,7 +466,7 @@ bool debug ()
 }
 
 + (void)appWillResignActive {
-	if (debug())
+	if (_debug)
 		NSLog(@"Ask4AppReviews appWillResignActive");
 	[[Ask4AppReviews sharedInstance] hideRatingAlert];
 }
@@ -469,25 +486,100 @@ bool debug ()
 }
 
 + (void)rateApp {
-#if TARGET_IPHONE_SIMULATOR
-	NSLog(@"Ask4AppReviews NOTE: iTunes App Store is not supported on the iOS simulator. Unable to open App Store page.");
-#else
-	NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
-    NSString *reviewURL = [[Ask4AppReviews sharedInstance]->templateReviewURL stringByReplacingOccurrencesOfString:@"APP_ID" withString:[self appStoreAppID]];
-    
-	[userDefaults setBool:YES forKey:kAsk4AppReviewsRatedCurrentVersion];
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+	[userDefaults setBool:YES forKey:kAsk4AppReviewsCurrentVersion];
 	[userDefaults synchronize];
-    [[UIApplication sharedApplication] openURL:[NSURL URLWithString:reviewURL]];
     
+	//Use the in-app StoreKit view if available (iOS 6) and imported. This works in the simulator.
+	if (![Ask4AppReviews sharedInstance].openInAppStore && NSStringFromClass([SKStoreProductViewController class]) != nil) {
+
+		SKStoreProductViewController *storeViewController = [[SKStoreProductViewController alloc] init];
+		NSNumber *appId = [NSNumber numberWithInteger:[Ask4AppReviews appStoreAppID].integerValue];
+		[storeViewController loadProductWithParameters:@{SKStoreProductParameterITunesItemIdentifier:appId} completionBlock:nil];
+		storeViewController.delegate = self.sharedInstance;
+        
+        id <Ask4AppReviewsDelegate> delegate = self.sharedInstance.delegate;
+		if ([delegate respondsToSelector:@selector(ask4AppReviewsWillPresentModalView:animated:)]) {
+            [delegate ask4AppReviewsWillPresentModalView:self.sharedInstance animated:_usesAnimation];
+		}
+		[[self getRootViewController] presentViewController:storeViewController animated:_usesAnimation completion:^{
+			[self setModalOpen:YES];
+			//Temporarily use a black status bar to match the StoreKit view.
+			[self setStatusBarStyle:[UIApplication sharedApplication].statusBarStyle];
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 70000
+			[[UIApplication sharedApplication]setStatusBarStyle:UIStatusBarStyleLightContent animated:_usesAnimation];
 #endif
+		}];
+        
+        //Use the standard openUrl method if StoreKit is unavailable.
+	} else {
+		
+#if TARGET_IPHONE_SIMULATOR
+		NSLog(@"ASK4AppReviews NOTE: iTunes App Store is not supported on the iOS simulator. Unable to open App Store page.");
+#else
+		NSString *reviewURL = [templateReviewURL stringByReplacingOccurrencesOfString:@"APP_ID" withString:[NSString stringWithFormat:@"%@", [Ask4AppReviews appStoreAppID]]];
+        
+		// iOS 7 needs a different templateReviewURL @see https://github.com/arashpayan/appirater/issues/131
+		if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 7.0 && [[[UIDevice currentDevice] systemVersion] floatValue] < 7.1) {
+			reviewURL = [templateReviewURLiOS7 stringByReplacingOccurrencesOfString:@"APP_ID" withString:[NSString stringWithFormat:@"%@", [Ask4AppReviews appStoreAppID]]];
+		}
+        
+		[[UIApplication sharedApplication] openURL:[NSURL URLWithString:reviewURL]];
+#endif
+	}
+
 }
 
++ (id)getRootViewController {
+    UIWindow *window = [[UIApplication sharedApplication] keyWindow];
+    if (window.windowLevel != UIWindowLevelNormal) {
+        NSArray *windows = [[UIApplication sharedApplication] windows];
+        for(window in windows) {
+            if (window.windowLevel == UIWindowLevelNormal) {
+                break;
+            }
+        }
+    }
+    
+    for (UIView *subView in [window subviews])
+    {
+        UIResponder *responder = [subView nextResponder];
+        if([responder isKindOfClass:[UIViewController class]]) {
+            return [self topMostViewController: (UIViewController *) responder];
+        }
+    }
+    
+    return nil;
+}
+
++ (UIViewController *) topMostViewController: (UIViewController *) controller {
+	BOOL isPresenting = NO;
+	do {
+		// this path is called only on iOS 6+, so -presentedViewController is fine here.
+		UIViewController *presented = [controller presentedViewController];
+		isPresenting = presented != nil;
+		if(presented != nil) {
+			controller = presented;
+		}
+		
+	} while (isPresenting);
+	
+	return controller;
+}
+
+//Delegate Methods
+
 - (void)mailComposeController:(MFMailComposeViewController*)controller didFinishWithResult:(MFMailComposeResult)result error:(NSError*)error {
-    [[self getRootViewController] dismissModalViewControllerAnimated:YES];
+    
+    [[Ask4AppReviews getRootViewController] dismissModalViewControllerAnimated:YES];
+    
 }
 
 - (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
     //NSLog(@"tag %i buttonIndex %i  ", alertView.tag, buttonIndex);
+    
+    id <Ask4AppReviewsDelegate> delegate = _delegate;
+	
     if(alertView.tag == 1)
     {
         
@@ -501,6 +593,9 @@ bool debug ()
                 [userDefaults setDouble:[[NSDate date] timeIntervalSince1970] forKey:kAsk4AppReviewsReminderRequestDate];
                 [userDefaults synchronize];
                 
+                if(delegate && [delegate respondsToSelector:@selector(ask4AppReviewsDidOptToRemindLater:)]){
+                    [delegate ask4AppReviewsDidOptToRemindLater:self];
+                }
                 break;
             }
             case 1:
@@ -517,7 +612,7 @@ bool debug ()
                     MFMailComposeViewController *mPicker = [[MFMailComposeViewController alloc] init];
                     mPicker.mailComposeDelegate = self;
                     
-                   [mPicker setSubject: Ask4AppReviews_EMAIL_SUBJECT];
+                    [mPicker setSubject: Ask4AppReviews_EMAIL_SUBJECT];
                     
                     NSArray *toRecipients = @[[Ask4AppReviews developerEmail]];
                     
@@ -537,8 +632,8 @@ bool debug ()
                                             objectForInfoDictionaryKey:(__bridge NSString *)kCFBundleVersionKey];
                     NSString *deviceSpecs =
                     [NSString stringWithFormat:@"%@ \n\n\n\n\n\n %@ \n OS - %@ \n Lang - %@ \n Country - %@  \n App Version - %@",
-                    Ask4AppReviews_EMAIL_BODY, model, systemVersion, language, country, appVersion];
-                   
+                     Ask4AppReviews_EMAIL_BODY, model, systemVersion, language, country, appVersion];
+                    
                     NSLog(@"Device Specs --> %@",deviceSpecs);
                     
                     
@@ -546,12 +641,12 @@ bool debug ()
                     
                     [mPicker setMessageBody:deviceSpecs isHTML:NO];
                     
-                  
                     
-                    [[self getRootViewController] presentViewController:mPicker animated:YES completion:^{
+                    
+                    [[Ask4AppReviews getRootViewController] presentViewController:mPicker animated:YES completion:^{
                         
                     }];
-
+                    
                     
                 }else {
                     UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Failure"
@@ -608,47 +703,31 @@ bool debug ()
     
 }
 
-- (id)getRootViewController {
-    UIWindow *window = [[UIApplication sharedApplication] keyWindow];
-    if (window.windowLevel != UIWindowLevelNormal) {
-        NSArray *windows = [[UIApplication sharedApplication] windows];
-        for(window in windows) {
-            if (window.windowLevel == UIWindowLevelNormal) {
-                break;
-            }
-        }
-    }
-    
-    for (UIView *subView in [window subviews])
-    {
-        UIResponder *responder = [subView nextResponder];
-        if([responder isKindOfClass:[UIViewController class]]) {
-            return [self topMostViewController: (UIViewController *) responder];
-        }
-    }
-    
-    return nil;
+//Delegate call from the StoreKit view.
+- (void)productViewControllerDidFinish:(SKStoreProductViewController *)viewController {
+	[Ask4AppReviews closeModal];
 }
 
-- (UIViewController *) topMostViewController: (UIViewController *) controller {
-	BOOL isPresenting = NO;
-	do {
-		// this path is called only on iOS 6+, so -presentedViewController is fine here.
-		UIViewController *presented = [controller presentedViewController];
-		isPresenting = presented != nil;
-		if(presented != nil) {
-			controller = presented;
-		}
+//Close the in-app rating (StoreKit) view and restore the previous status bar style.
++ (void)closeModal {
+	if (_modalOpen) {
+		[[UIApplication sharedApplication]setStatusBarStyle:_statusBarStyle animated:_usesAnimation];
+		BOOL usedAnimation = _usesAnimation;
+		[self setModalOpen:NO];
 		
-	} while (isPresenting);
-	
-	return controller;
+		// get the top most controller (= the StoreKit Controller) and dismiss it
+		UIViewController *presentingController = [UIApplication sharedApplication].keyWindow.rootViewController;
+		presentingController = [self topMostViewController: presentingController];
+		[presentingController dismissViewControllerAnimated:_usesAnimation completion:^{
+            id <Ask4AppReviewsDelegate> delegate = self.sharedInstance.delegate;
+			if ([delegate respondsToSelector:@selector(ask4AppReviewsDidDismissModalView:animated:)]) {
+				[delegate ask4AppReviewsDidDismissModalView:(Ask4AppReviews *)self animated:usedAnimation];
+			}
+		}];
+		[self.class setStatusBarStyle:(UIStatusBarStyle)nil];
+	}
 }
 
-+ (void) loadConfiguration:(NSDictionary *) configurationDict
-{
-    config = configurationDict;
-}
 
 
 @end

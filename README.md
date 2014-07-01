@@ -8,27 +8,27 @@ modify and share your changes with the world. To find out more, check out the [h
 Getting Started
 ---------------
 1. Add the Ask4AppReviews code into your project (directly, or via CocoaPods: `pod 'Ask4AppReviews'`)
-2. Add the `CFNetwork` and `SystemConfiguration` and 'MessageUI' frameworks to your project (CocoaPods handles this for you)
+2. Add the `CFNetwork` and `SystemConfiguration` and 'MessageUI' and 'StoreKit' frameworks to your project (CocoaPods handles this for you)
 3. Call `[Ask4AppReviews appLaunched:YES]` at the end of your app delegate's `application:didFinishLaunchingWithOptions:` method.
-4. Call `[Ask4AppReviews appEnteredForeground:YES]` in your app delegate's `applicationWillEnterForeground:` method. and provide a navigationController for the MailComposer message to appear
+4. Call `[Ask4AppReviews appEnteredForeground:YES]` in your app delegate's `applicationWillEnterForeground:` method.
 5. (OPTIONAL) Call `[Ask4AppReviews userDidSignificantEvent:YES]` when the user does something 'significant' in the app.
 6. Finally, set the `AppStoreId` in your project info.plist (AppStoreId) and 'DeveloperEmail' which is the email which the positive feedback goes too.
 
 Customization
 -------------
-You can override the dettings #defined in .h file, by calling the method `[Ask4AppReviews loadConfiguration:@{key:value}]` somewhere early in your app (for example, in the `didFinishLaunchingWithOptions:` method of your AppDelegate), for example something like this (if you change the .h file installed via CocoaPods, you'll loose your changes):
 
-    [Ask4AppReviews loadConfiguration:@{
-                                        @"Ask4AppReviews_DAYS_UNTIL_PROMPT" : @3,
-                                        @"Ask4AppReviews_USES_UNTIL_PROMPT" : @4,
-                                        @"Ask4AppReviews_SIG_EVENTS_UNTIL_PROMPT" : @-1,
-                                        @"Ask4AppReviews_TIME_BEFORE_REMINDING" : @4,
-                                        @"Ask4AppReviews_DEBUG" : @NO,
-                                        }];
+```objc
+[Ask4AppReviews setAppId:@"552035781"];
+[Ask4AppReviews setDaysUntilPrompt:1];
+[Ask4AppReviews setUsesUntilPrompt:10];
+[Ask4AppReviews setSignificantEventsUntilPrompt:-1];
+[Ask4AppReviews setTimeBeforeReminding:2];
+[Ask4AppReviews setDebug:YES];
+```
 
 License
 -------
-Copyright 2012. [luke durrant].
+Copyright 2014. [luke durrant].
 This library is distributed under the terms of the MIT/X11.
 
 
