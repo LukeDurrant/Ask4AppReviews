@@ -8,7 +8,7 @@ modify and share your changes with the world. To find out more, check out the [h
 Getting Started
 ---------------
 1. Add the Ask4AppReviews code into your project
-2. Add the `CFNetwork` and `SystemConfiguration` and 'MessageUI' frameworks to your project
+2. Add the `CFNetwork` and `SystemConfiguration` and `MessageUI` frameworks to your project
 3. Call `[Ask4AppReviews appLaunched:YES]` at the end of your app delegate's `application:didFinishLaunchingWithOptions:` method.
 4. Call `[Ask4AppReviews appEnteredForeground:YES]` in your app delegate's `applicationWillEnterForeground:` method. and provide a navigationController for the MailComposer message to appear
 5. (OPTIONAL) Call `[Ask4AppReviews userDidSignificantEvent:YES]` when the user does something 'significant' in the app.

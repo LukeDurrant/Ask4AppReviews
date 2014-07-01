@@ -33,6 +33,7 @@
 #import "Ask4AppReviews.h"
 #import <SystemConfiguration/SCNetworkReachability.h>
 #include <netinet/in.h>
+#import "GAIDictionaryBuilder.h"
 
 
 
@@ -56,6 +57,7 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 - (BOOL)ratingConditionsHaveBeenMet;
 - (void)incrementUseCount;
 - (void)hideRatingAlert;
+
 @end
 
 @implementation Ask4AppReviews {
@@ -82,7 +84,7 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
     
     if (!didRetrieveFlags)
     {
-        NSLog(@"Error. Could not recover network reachability flags");
+       // NSLog(@"Error. Could not recover network reachability flags");
         return NO;
     }
 	
@@ -99,7 +101,7 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 
 +(NSString*)appStoreAppID {
 	
-    NSString* value = [[[NSBundle mainBundle] infoDictionary] objectForKey:kAsk4AppReviewsAppIdBundleKey];
+    NSString* value = [[NSBundle mainBundle] infoDictionary][kAsk4AppReviewsAppIdBundleKey];
 	
     NSAssert1(value, @"Error - you have not specified %@ property in your info.plist", kAsk4AppReviewsAppIdBundleKey);
 	
@@ -108,7 +110,7 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 
 +(NSString*)developerEmail {
 	
-    NSString* value = [[[NSBundle mainBundle] infoDictionary] objectForKey:kAsk4AppReviewsEmailBundleKey];
+    NSString* value = [[NSBundle mainBundle] infoDictionary][kAsk4AppReviewsEmailBundleKey];
 	
     NSAssert1(value, @"Error - you have not specified %@ property in your info.plist", kAsk4AppReviewsEmailBundleKey);
 	
@@ -149,12 +151,14 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 
 - (void)showRatingAlert {
     
-	UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:Ask4AppReviews_MESSAGE_TITLE
+	 UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:Ask4AppReviews_MESSAGE_TITLE
                                                         message:Ask4AppReviews_MESSAGE
                                                        delegate:self
                                               cancelButtonTitle:Ask4AppReviews_CANCEL_BUTTON
                                               otherButtonTitles:Ask4AppReviews_RATE_BUTTON, Ask4AppReviews_RATE_LATER, nil];
-    alertView.tag = 2;
+    
+    
+     alertView.tag = 2;
 	self.ratingAlert = alertView;
 	[alertView show];
     
@@ -172,6 +176,7 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 	[alertView show];
     
 }
+
 
 - (BOOL)ratingConditionsHaveBeenMet {
 	if (Ask4AppReviews_DEBUG)
@@ -216,7 +221,7 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 
 - (void)incrementUseCount {
 	// get the app's version
-	NSString *version = [[[NSBundle mainBundle] infoDictionary] objectForKey:(NSString*)kCFBundleVersionKey];
+	NSString *version = [[NSBundle mainBundle] infoDictionary][(__bridge NSString*)kCFBundleVersionKey];
 	
 	// get the version number that we've been tracking
 	NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
@@ -265,7 +270,7 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 
 - (void)incrementSignificantEventCount {
 	// get the app's version
-	NSString *version = [[[NSBundle mainBundle] infoDictionary] objectForKey:(NSString*)kCFBundleVersionKey];
+	NSString *version = [[NSBundle mainBundle] infoDictionary][(__bridge NSString*)kCFBundleVersionKey];
 	
 	// get the version number that we've been tracking
 	NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
@@ -361,6 +366,12 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
 	[Ask4AppReviews appLaunched:YES];
 }
 
+
++ (void)askQuestion{
+    [[Ask4AppReviews sharedInstance] showQuestionAlert];
+}
+
+
 + (void)appLaunched:(BOOL)canPromptForRating  {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0),
                    ^{
@@ -425,12 +436,20 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
     
 	[userDefaults setBool:YES forKey:kAsk4AppReviewsRatedCurrentVersion];
 	[userDefaults synchronize];
-	[[UIApplication sharedApplication] openURL:[NSURL URLWithString:reviewURL]];
+    [[UIApplication sharedApplication] openURL:[NSURL URLWithString:reviewURL]];
+    // May return nil if a tracker has not already been initialized with a property
+    // ID.
+    id tracker = [[GAI sharedInstance] defaultTracker];
+    
+    [tracker send:[[GAIDictionaryBuilder createEventWithCategory:@"ui_action"     // Event category (required)
+                                                          action:@"button_press"  // Event action (required)
+                                                           label:@"submit_reivew"          // Event label
+                                                           value:nil] build]];    // Event value
 #endif
 }
 
 - (void)mailComposeController:(MFMailComposeViewController*)controller didFinishWithResult:(MFMailComposeResult)result error:(NSError*)error {
-    [theViewController dismissModalViewControllerAnimated:YES];
+    [[self getRootViewController] dismissModalViewControllerAnimated:YES];
 }
 
 - (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
@@ -464,14 +483,41 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
                     MFMailComposeViewController *mPicker = [[MFMailComposeViewController alloc] init];
                     mPicker.mailComposeDelegate = self;
                     
-                    [mPicker setSubject:Ask4AppReviews_EMAIL_SUBJECT];
+                   [mPicker setSubject: Ask4AppReviews_EMAIL_SUBJECT];
                     
-                    NSArray *toRecipients = [NSArray arrayWithObject:[Ask4AppReviews developerEmail]];
+                    NSArray *toRecipients = @[[Ask4AppReviews developerEmail]];
                     
                     [mPicker setToRecipients:toRecipients];
-                    [mPicker setMessageBody:Ask4AppReviews_EMAIL_BODY isHTML:NO];
+                    // GM - Added some custom code here to provide system info in the support email.
                     
-                    [theViewController presentModalViewController:mPicker animated:YES];
+                    
+                    UIDevice *currentDevice = [UIDevice currentDevice];
+                    NSString *model = [currentDevice model];
+                    NSString *systemVersion = [currentDevice systemVersion];
+                    
+                    NSArray *languageArray = [NSLocale preferredLanguages];
+                    NSString *language = languageArray[0];
+                    NSLocale *locale = [NSLocale currentLocale];
+                    NSString *country = [locale localeIdentifier];
+                    NSString *appVersion = [[NSBundle mainBundle]
+                                            objectForInfoDictionaryKey:(__bridge NSString *)kCFBundleVersionKey];
+                    NSString *deviceSpecs =
+                    [NSString stringWithFormat:@"%@ \n\n\n\n\n\n %@ \n OS - %@ \n Lang - %@ \n Country - %@  \n App Version - %@",
+                    Ask4AppReviews_EMAIL_BODY, model, systemVersion, language, country, appVersion];
+                   
+                    NSLog(@"Device Specs --> %@",deviceSpecs);
+                    
+                    
+                    
+                    
+                    [mPicker setMessageBody:deviceSpecs isHTML:NO];
+                    
+                  
+                    
+                    [[self getRootViewController] presentViewController:mPicker animated:YES completion:^{
+                        
+                    }];
+
                     
                 }else {
                     UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Failure"
@@ -527,5 +573,47 @@ NSString *const kAsk4AppReviewsEmailBundleKey           = @"DeveloperEmail";
     }
     
 }
+
+// got this stuff rom appirater should ask ask4reviews to combine
+
+
+- (id)getRootViewController {
+    UIWindow *window = [[UIApplication sharedApplication] keyWindow];
+    if (window.windowLevel != UIWindowLevelNormal) {
+        NSArray *windows = [[UIApplication sharedApplication] windows];
+        for(window in windows) {
+            if (window.windowLevel == UIWindowLevelNormal) {
+                break;
+            }
+        }
+    }
+    
+    for (UIView *subView in [window subviews])
+    {
+        UIResponder *responder = [subView nextResponder];
+        if([responder isKindOfClass:[UIViewController class]]) {
+            return [self topMostViewController: (UIViewController *) responder];
+        }
+    }
+    
+    return nil;
+}
+
+- (UIViewController *) topMostViewController: (UIViewController *) controller {
+	BOOL isPresenting = NO;
+	do {
+		// this path is called only on iOS 6+, so -presentedViewController is fine here.
+		UIViewController *presented = [controller presentedViewController];
+		isPresenting = presented != nil;
+		if(presented != nil) {
+			controller = presented;
+		}
+		
+	} while (isPresenting);
+	
+	return controller;
+}
+
+
 
 @end

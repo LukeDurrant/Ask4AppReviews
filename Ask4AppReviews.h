@@ -49,7 +49,7 @@ extern NSString *const kAsk4AppReviewsReminderRequestDate;
 /*
  Your localized app's name.
  */
-#define Ask4AppReviews_LOCALIZED_APP_NAME    [[[NSBundle mainBundle] localizedInfoDictionary] objectForKey:(NSString *)kCFBundleNameKey]
+#define Ask4AppReviews_LOCALIZED_APP_NAME    [[[NSBundle mainBundle] localizedInfoDictionary] objectForKey:(__bridge NSString *)kCFBundleNameKey]
 
 /*
  Your app's name.
@@ -60,14 +60,14 @@ extern NSString *const kAsk4AppReviewsReminderRequestDate;
  This is the message your users will see once they've passed the day+launches
  threshold.
  */
-#define Ask4AppReviews_LOCALIZED_MESSAGE     NSLocalizedString(@"If you enjoy using %@, would you mind taking a moment to rate it? It won't take more than a minute. Thanks for your support!", nil)
+#define Ask4AppReviews_LOCALIZED_MESSAGE     NSLocalizedString(@"If you enjoy using the free and ad free %@, would you mind taking a moment to rate it? It won't take more than a minute. Thanks for your support!", nil)
 #define Ask4AppReviews_MESSAGE				[NSString stringWithFormat:Ask4AppReviews_LOCALIZED_MESSAGE, Ask4AppReviews_APP_NAME]
 
 /*
  This is the title of the message alert that users will see.
  */
 #define Ask4AppReviews_LOCALIZED_MESSAGE_TITLE   NSLocalizedString(@"Rate %@", nil)
-#define Ask4AppReviews_MESSAGE_TITLE             [NSString stringWithFormat:Ask4AppReviews_LOCALIZED_MESSAGE_TITLE, Ask4AppReviews_APP_NAME]
+#define Ask4AppReviews_MESSAGE_TITLE            [NSString stringWithFormat:Ask4AppReviews_LOCALIZED_MESSAGE_TITLE, Ask4AppReviews_APP_NAME]
 
 /*
  The text of the button that rejects reviewing the app.
@@ -89,8 +89,9 @@ extern NSString *const kAsk4AppReviewsReminderRequestDate;
 #define Ask4AppReviews_QUESTION             [NSString stringWithFormat:Ask4AppReviews_LOCALIZED_QUESTION, Ask4AppReviews_APP_NAME]
 
 
-#define Ask4AppReviews_LOCALIZED_EMAIL_SUBJECT NSLocalizedString(@"Having issues with %@", nil)
+#define Ask4AppReviews_LOCALIZED_EMAIL_SUBJECT NSLocalizedString(@"%@ feedback", nil)
 #define Ask4AppReviews_EMAIL_SUBJECT			[NSString stringWithFormat:Ask4AppReviews_LOCALIZED_EMAIL_SUBJECT, Ask4AppReviews_APP_NAME]
+
 
 #define Ask4AppReviews_EMAIL_BODY NSLocalizedString(@"Please describe your issue:\n", nil)
 
@@ -122,7 +123,7 @@ extern NSString *const kAsk4AppReviewsReminderRequestDate;
  Users will need to have the same version of your app installed for this many
  days before they will be prompted to rate it.
  */
-#define Ask4AppReviews_DAYS_UNTIL_PROMPT		30		// double
+#define Ask4AppReviews_DAYS_UNTIL_PROMPT		1		// double
 
 /*
  An example of a 'use' would be if the user launched the app. Bringing the app
@@ -134,7 +135,7 @@ extern NSString *const kAsk4AppReviewsReminderRequestDate;
  Users need to 'use' the same version of the app this many times before
  before they will be prompted to rate it.
  */
-#define Ask4AppReviews_USES_UNTIL_PROMPT		20		// integer
+#define Ask4AppReviews_USES_UNTIL_PROMPT		3		// integer
 
 /*
  A significant event can be anything you want to be in your app. In a
@@ -154,13 +155,13 @@ extern NSString *const kAsk4AppReviewsReminderRequestDate;
  'Remind me later'. This value specifies how long (in days) Ask4AppReviews
  will wait before reminding them.
  */
-#define Ask4AppReviews_TIME_BEFORE_REMINDING		1	// double
+#define Ask4AppReviews_TIME_BEFORE_REMINDING		5	// double
 
 /*
  'YES' will show the Ask4AppReviews alert everytime. Useful for testing how your message
  looks and making sure the link to your app's review page works.
  */
-#define Ask4AppReviews_DEBUG				YES
+#define Ask4AppReviews_DEBUG				NO
 
 #import <UIKit/UIKit.h>
 #import <MessageUI/MessageUI.h>
@@ -173,10 +174,10 @@ extern NSString *const kAsk4AppReviewsReminderRequestDate;
     UIViewController *theViewController;
     
 }
-@property(nonatomic, retain) UIAlertView *questionAlert;
-@property(nonatomic, retain) UIAlertView *ratingAlert;
+@property(nonatomic, strong) UIAlertView *questionAlert;
+@property(nonatomic, strong) UIAlertView *ratingAlert;
 
-@property(nonatomic, retain) UIViewController *theViewController;
+@property(nonatomic, strong) UIViewController *theViewController;
 
 /*
  DEPRECATED: While still functional, it's better to use
@@ -184,6 +185,10 @@ extern NSString *const kAsk4AppReviewsReminderRequestDate;
  
  Calls [Ask4AppReviews appLaunched:YES]. See appLaunched: for details of functionality.
  */
+
+
++ (void)askQuestion;
+
 + (void)appLaunched;
 
 /*
